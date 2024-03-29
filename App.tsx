@@ -1,6 +1,8 @@
 import Geolocation from '@react-native-community/geolocation';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+  AppState,
+  AppStateStatus,
   Button,
   Image,
   Linking,
@@ -11,7 +13,7 @@ import {
   Text,
   TextInput,
   View,
-  useColorScheme,
+  useColorScheme
 } from 'react-native';
 import BackgroundService from 'react-native-background-actions';
 import TcpSocket from 'react-native-tcp-socket';
@@ -51,7 +53,80 @@ function App(): React.JSX.Element {
 
   // Estado para almacenar la dirección IP y el puerto
   const [ip, setIp] = useState<string>(''); // Aquí se almacena la dirección IP
-  const [port, setPort] = useState<string>(''); // Aquí se almacena el puerto
+  const [port, setPort] = useState<string>('3000'); // Aquí se almacena el puerto
+
+  const appState = useRef(AppState.currentState);
+  const [appStateVisible, setAppStateVisible] = useState(appState.current);
+
+  var [sendingData, setSendingData] = useState<boolean>(false);
+
+  useEffect(() => {
+    const appStateHandler = async (nextAppState: AppStateStatus) => {
+      // Actualiza el estado de la aplicación
+      appState.current = nextAppState;
+      setAppStateVisible(appState.current);
+
+      // Verifica si la aplicación está en segundo plano
+      if (appState.current.match(/inactive|background/)) {
+        // La aplicación está en segundo plano, inicia la tarea en segundo plano
+        try {
+          const options = {
+            taskName: 'GEOTRACK',
+            taskTitle: 'UPDATED TRACK',
+            taskDesc: 'Geotrack está corriendo en segundo plano',
+            taskIcon: {
+              name: 'ic_launcher',
+              type: 'mipmap',
+            },
+            color: '#081B2A',
+            linkingURI: 'yourSchemeHere://chat/jane',
+            parameters: {
+              delay: 1000,
+            },
+          };
+
+          // Definir la tarea intensiva en segundo plano
+          const veryIntensiveTask = async () => {
+            // Verificar si la pantalla actual es LOCATION_INFO y sendingData es verdadero antes de continuar
+            if (currentScreen === Screen.LOCATION_INFO && sendingData) {
+              // Obtener la ubicación una vez antes de entrar en el bucle
+              await obtenerUbicacion();
+              // Bucle infinito que ejecuta la lógica en segundo plano
+              while (true) {
+                // Verificar si sendingData es verdadero antes de continuar
+                if (sendingData) {
+                  // Muestra un mensaje si sendingData es verdadero y llama a handlePressSendTCP
+                  console.log('Enviando datos en segundo plano...');
+                  await handlePressSendTCP();
+                }
+              }
+            }
+          };
+
+          // Iniciar la tarea en segundo plano
+          await BackgroundService.start(veryIntensiveTask, options);
+          console.log('Tarea en segundo plano iniciada con éxito');
+        } catch (error) {
+          console.error('Error al iniciar la tarea en segundo plano:', error);
+        }
+      } else {
+        // La aplicación está en primer plano
+        console.log('App has come to the foreground!');
+      }
+    };
+
+    // Suscribirse al evento de cambio de estado de la aplicación
+    const subscription = AppState.addEventListener('change', appStateHandler);
+
+    // Llamar al manejador de estado de la aplicación para manejar el estado inicial
+    appStateHandler(AppState.currentState);
+
+    // Devolver una función de limpieza para eliminar la suscripción al desmontar el componente
+    return () => {
+      subscription.remove();
+      BackgroundService.stop(); // Detener la tarea en segundo plano al desmontar el componente
+    };
+  }, [currentScreen]); // Dependencias del efecto useEffect
 
   // Función para obtener la ubicación actual
   const obtenerUbicacion = (): Promise<{ latitude: number; longitude: number; altitude: number; timestamp: number }> => {
@@ -60,6 +135,7 @@ function App(): React.JSX.Element {
         (position) => {
           const { latitude, longitude, altitude } = position.coords;
           const timestamp = position.timestamp; // Obtiene la marca de tiempo actual
+
 
           // Asegúrate de que altitude sea un número, incluso si es null
           const alt = altitude !== null ? altitude : 0;
@@ -72,123 +148,80 @@ function App(): React.JSX.Element {
           console.log('Error al obtener la ubicación:', error);
           reject(error); // Rechaza la promesa en caso de error
         },
-        { enableHighAccuracy: true, distanceFilter: 0}
-          //interval: 1000 } // Añade la opción interval aquí
+        { enableHighAccuracy: true, distanceFilter: 0 }
+        //interval: 1000 } // Añade la opción interval aquí
       );
     });
   };
 
-
   const handlePressSendTCP = async () => {
-    if (!locationData.latitude || !locationData.longitude) {
-      console.log('ERROR: No fue posible obtener la información de coordenadasTCP');
-      return;
-    }
+    // Verificamos si ya se están enviando datos
+    if (sendingData) {
+      setSendingData(false);
+      console.log('Deteniendo el envío de datos');
+    } else {
+      setSendingData(true);
+      console.log('Iniciando el envío de datos');
+      try {
 
-    if (!ip || !port) {
-      console.log('ERROR: No se ha ingresado la dirección IP o el puerto');
-      return;
-    }
-
-    try {
-      const client = await TcpSocket.connect(
-        {
-          port: Number(port),
-          host: ip
-        },
-        () => {
-          console.log('Conexión establecida correctamente');
+        // Verificamos si tenemos la información necesaria para enviar los datos
+        if (!locationData.latitude || !locationData.longitude) {
+          console.log('ERROR: No fue posible obtener la información de coordenadasTCP');
+          return;
         }
-      );
 
-      client.on('data', function (locationDataJSON) {
-        console.log('message was received', locationDataJSON);
-
-        const response = JSON.parse(locationDataJSON.toString());
-
-        if (response.hasOwnProperty('latitude') && response.hasOwnProperty('longitude')) {
-          const latitude = response.latitude;
-          const longitude = response.longitude;
-
-          console.log('Coordenadas recibidas:', latitude, longitude);
+        if (!ip || !port) {
+          console.log('ERROR: No se ha ingresado la dirección IP o el puerto');
+          return;
         }
-      });
 
-      const sendPeriodically = async () => {
-        const interval = 1000; // Intervalo actualizado a 1 segundo
+        // Establecemos la conexión con el cliente TCP
+        const client = await TcpSocket.connect(
+          {
+            port: Number(port),
+            host: ip
+          },
+          () => {
+            console.log('Conexión establecida correctamente');
+          }
+        );
 
-        while (true) {
+        // Función para enviar los datos de ubicación
+        const sendDataTCP = async () => {
           try {
-            await new Promise(resolve => setTimeout(resolve, interval)); // Esperar antes de la siguiente iteración
-            await sendData(client); // Llamar a la función para enviar los datos
-            console.log('entre al while');
+            const locationData = await obtenerUbicacion(); // Espera los datos de ubicación actualizados
+            const message = `${locationData.latitude} ${locationData.longitude} ${new Date(locationData.timestamp).toLocaleString()}`;
+            const locationDataJSON = JSON.stringify(message);
+            client.write(locationDataJSON); // Escribir los datos en el cliente TCP
+            console.log('Datos enviados:', locationDataJSON); // Registro de envío de datos
+          } catch (error) {
+            console.error('Error al enviar datos por TCP:', error);
+          }
+        };
+
+        setSendingData(true);
+
+        // Enviamos datos periódicamente mientras sendingData sea true
+        while (sendingData) {
+          try {
+            await sendDataTCP(); // Llamar a la función para enviar los datos
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Esperar antes de la siguiente iteración
           } catch (error) {
             console.error('Error en el bucle de envío periódico:', error);
           }
         }
-      };
 
-      sendPeriodically(); // Iniciar el bucle de envío periódico
-    } catch (error) {
-      console.error('Error al conectar por TCP:', error);
-    }
-  };
-
-  // Función para enviar los datos de ubicación
-  const sendData = async (client: any) => {
-    try {
-      const locationData = await obtenerUbicacion(); // Espera los datos de ubicación actualizados
-
-      const message = `${locationData.latitude} ${locationData.longitude} ${new Date(locationData.timestamp).toLocaleString()}`;
-      const locationDataJSON = JSON.stringify(message);
-
-      client.write(locationDataJSON);
-    } catch (error) {
-      console.error('Error al enviar datos por TCP:', error);
-    }
-  };
-
-
-  useEffect(() => {
-    const startBackgroundTask = async () => {
-      try {
-        const options = {
-          taskName: 'Example',
-          taskTitle: 'ExampleTask title',
-          taskDesc: 'ExampleTask description',
-          taskIcon: {
-            name: 'ic_launcher',
-            type: 'mipmap',
-          },
-          color: '#ff00ff',
-          linkingURI: 'yourSchemeHere://chat/jane',
-          parameters: {
-            delay: 1000,
-          },
-        };
-
-        const veryIntensiveTask = async () => {
-          await obtenerUbicacion();
-          //await handlePressSendTCP();
-          //await handlePressSendUDP();
-        };
-
-        await BackgroundService.start(veryIntensiveTask, options);
-        console.log('Tarea en segundo plano iniciada con éxito');
+        // Si sendingData se cambia a false, detenemos el envío de datos
+        console.log('Envío de datos detenido');
       } catch (error) {
-        console.error('Error al iniciar la tarea en segundo plano:', error);
+        console.error('Error al conectar por TCP:', error);
       }
-    };
-
-    startBackgroundTask();
-
-    return () => {
-      BackgroundService.stop();
-    };
-  }, []);
+    }
+  };
 
   const handlePressStart = () => {
     setCurrentScreen(Screen.LOCATION_INFO);
+    obtenerUbicacion();
   };
 
   const handlePressBack = () => {
@@ -203,7 +236,7 @@ function App(): React.JSX.Element {
 
     const message = `¡Hola! Mis coordenadas son: Latitud: ${locationData.latitude}, Longitud: ${locationData.longitude}, Altitud: ${locationData.altitude || 'N/A'}, Marca de tiempo: ${locationData.timestamp ? new Date(locationData.timestamp).toLocaleString() : 'N/A'}`;
 
-    await Linking.openURL(`sms:+573023793697?body=${encodeURIComponent(message)}`);
+    await Linking.openURL(`sms:+573242937580?body=${encodeURIComponent(message)}`);
     console.log('Mensaje SMS enviado');
   };
 
@@ -240,55 +273,80 @@ function App(): React.JSX.Element {
               source={require('./logo1.jpg')}
             />
             <View>
-              <Text style={style3.label}>Estos son tus datos de ubicación actual</Text>
+              <Text style={[style3.label, { fontSize: 20, width: '100%', color: 'rgba(8,27,42,0.7)', textAlign: 'center' }]}>
+                Estos son tus datos de ubicación actual:
+              </Text>
             </View>
             {locationData && (
               <>
-                <View style={style3.dataRow}>
-                  <Text style={style3.label}>Latitud:</Text>
-                  <View>
+                <View style={[style3.dataRow, { width: '100%' }]}>
+                  <View style={{ width: '90%' }}>
+                    <Text style={[style3.label, { fontSize: 20 }]}>Latitud:</Text>
+                  </View>
+                  <View style={{ width: '90%' }}>
                     <Text style={style3.container}>{locationData.latitude !== null ? locationData.latitude.toFixed(6) : 'N/A'}</Text>
                   </View>
                 </View>
 
-                <View style={style3.dataRow}>
-                  <Text style={style3.label}>Longitud:</Text>
-                  <View>
+                <View style={[style3.dataRow, { width: '100%' }]}>
+                  <View style={{ width: '90%' }}>
+                    <Text style={[style3.label, { fontSize: 20 }]}>Longitud:</Text>
+                  </View>
+                  <View style={{ width: '90%' }}>
                     <Text style={style3.container}>{locationData.longitude !== null ? locationData.longitude.toFixed(6) : 'N/A'}</Text>
                   </View>
                 </View>
 
-                <View style={style3.dataRow}>
-                  <Text style={style3.label}>Altitud:</Text>
-                  <View>
+                <View style={[style3.dataRow, { width: '100%' }]}>
+                  <View style={{ width: '90%' }}>
+                    <Text style={[style3.label, { fontSize: 20 }]}>Altitud:</Text>
+                  </View>
+                  <View style={{ width: '90%' }}>
                     <Text style={style3.container}>{locationData.altitude !== null ? locationData.altitude.toFixed(2) : 'N/A'}</Text>
                   </View>
                 </View>
 
-                <View style={style3.dataRow}>
-                  <Text style={style3.label}>Marca de tiempo:</Text>
-                  <View>
+                <View style={[style3.dataRow, { width: '100%' }]}>
+                  <View style={{ width: '90%' }}>
+                    <Text style={[style3.label, { fontSize: 20 }]}>Marca de tiempo:</Text>
+                  </View>
+                  <View style={{ width: '90%' }}>
                     <Text style={style3.container}>{locationData.timestamp !== null ? new Date(locationData.timestamp).toLocaleString() : 'N/A'}</Text>
                   </View>
                 </View>
               </>
             )}
+
+            <View style={[style3.buttonContainer, { marginTop: 10 }]}>
+              <TextInput
+                style={[styles.input, { color: 'white' }]}
+                placeholder="IP publica"
+                onChangeText={setIp}
+                value={ip}
+                placeholderTextColor={Colors.white}
+              />
+              <TextInput
+                style={[styles.input, { color: 'white' }]}
+                placeholder="Puerto"
+                onChangeText={setPort}
+                value={port}
+                keyboardType='numeric'
+                placeholderTextColor={Colors.white}
+              />
+            </View>
+
             <View style={style1.content}>
-              <View style={style3.buttonContainer}>
+              <View style={[style3.buttonContainer, { marginTop: 10 }]}>
                 <Button
-                  onPress={handlePressSMS}
-                  title="Enviar ubicación"
+                  onPress={() => {
+                    handlePressSendTCP();
+                    // Cambia el estado de sendingData al presionar el botón
+                  }}
+                  title={sendingData ? 'Detener envío' : 'Iniciar envío'}
                   color='rgb(8,27,42)'
                 />
               </View>
 
-              <View style={[style3.buttonContainer, { marginTop: 10 }]}>
-                <Button
-                  onPress={handlePressSendTCP}
-                  title="Enviar TCP"
-                  color='rgb(8,27,42)'
-                />
-              </View>
 
               <View style={[style3.buttonContainer, { marginTop: 10 }]}>
                 <Button
@@ -298,6 +356,15 @@ function App(): React.JSX.Element {
                 />
               </View>
 
+              <View style={style3.buttonContainer}>
+                <Button
+                  onPress={handlePressSMS}
+                  title="Enviar ubicación por SMS"
+                  color='rgb(8,27,42)'
+                />
+              </View>
+
+
               <View style={[style3.buttonContainer, { marginTop: 10 }]}>
                 <Button
                   onPress={handlePressBack}
@@ -306,23 +373,7 @@ function App(): React.JSX.Element {
                 />
               </View>
 
-              <View style={[style3.buttonContainer, { marginTop: 10 }]}>
-                <TextInput
-                  style={[styles.input, { color: 'white' }]}
-                  placeholder="3.135.85.137"
-                  onChangeText={setIp}
-                  value={ip}
-                  placeholderTextColor={Colors.white}
-                />
-                <TextInput
-                  style={[styles.input, { color: 'white' }]}
-                  placeholder="20000"
-                  onChangeText={setPort}
-                  value={port}
-                  keyboardType='numeric'
-                  placeholderTextColor={Colors.white}
-                />
-              </View>
+
 
               <View style={style1.container}></View>
             </View>
@@ -405,9 +456,11 @@ const style2 = StyleSheet.create({
 
   title: {
     fontFamily: 'Batangas-Regular',
-    fontSize: 50,
+    fontSize: 30,
     fontWeight: 'bold',
     marginBottom: 20,
+    flexDirection: 'column',
+    alignItems: 'center',
   },
 
   dataRow: {
@@ -442,11 +495,11 @@ const style3 = StyleSheet.create({
   container: {
     color: 'black',
     backgroundColor: 'rgb(191, 210, 224)',
-    borderRadius: 10,
-    paddingVertical: 12,
+    borderRadius: 20,
+    paddingVertical: 5,
     paddingHorizontal: 70,
     alignItems: 'center',
-    fontSize: 20,
+    fontSize: 15,
     fontWeight: 'bold',
   },
 
@@ -477,11 +530,11 @@ const style3 = StyleSheet.create({
   },
 
   stretch: {
-    width: 150,
-    height: 150,
+    width: 100,
+    height: 100,
     resizeMode: 'stretch',
     alignItems: 'center',
-    marginLeft: 60,
+    marginLeft: 82,
     marginBottom: 10,
 
   },
@@ -507,7 +560,3 @@ const styles = StyleSheet.create({
 });
 
 export default App;
-
-//function alert(arg0: string) {
-//  throw new Error('Function not implemented.');
-//}
