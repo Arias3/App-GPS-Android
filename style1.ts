@@ -58,49 +58,6 @@ const style1 = StyleSheet.create({
   },
 });
 
-const style2 = StyleSheet.create({
-  container: {
-    padding: 8,
-    flex: 4,
-  },
-
-  content: {
-    paddingHorizontal: 10,
-    paddingVertical: 20,
-  },
-
-  title: {
-    fontFamily: 'Batangas-Regular',
-    fontSize: 30,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    flexDirection: 'column',
-    alignItems: 'center',
-  },
-
-  dataRow: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-
-  label: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginRight: 8,
-  },
-
-  value: {
-    fontSize: 18,
-  },
-
-  stretch: {
-    width: 225,
-    height: 40,
-    resizeMode: 'center',
-  }
-});
-
 const style3 = StyleSheet.create({
   content: {
     paddingHorizontal: 5,
@@ -174,6 +131,6 @@ const styles = StyleSheet.create({
   },
 });
 
-export { style1, style2, style3, styles };
+export { style1, style3, styles };
 
 
