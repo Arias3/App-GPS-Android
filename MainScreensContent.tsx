@@ -9,7 +9,6 @@ import {
     TextInput,
     View,
 } from 'react-native';
-import { Colors } from 'react-native/Libraries/NewAppScreen';
 import { LocationData, Screen } from './App'; // Asegúrate de ajustar la ruta correcta si es diferente
 import { style1, styles } from './style1';
 
@@ -20,14 +19,11 @@ interface MainScreenContentProps {
     handlePressStart: () => void;
     style3: any;
     handlePressBack: () => void;
-    handlePressSMS: () => void;
     handlePressSendTCP: () => void;
     sendingData: boolean;
     locationData: LocationData;
     ip: string;
     setIp: (ip: string) => void;
-    port: string;
-    setPort: (port: string) => void;
     id: string;
     setId: (id: string) => void;
 }
@@ -39,14 +35,11 @@ const MainScreenContent: React.FC<MainScreenContentProps> = ({
     handlePressStart,
     style3,
     handlePressBack,
-    handlePressSMS,
     handlePressSendTCP,
     sendingData,
     locationData,
     ip,
     setIp,
-    port,
-    setPort,
     id,
     setId
 }) => {
@@ -73,9 +66,16 @@ const MainScreenContent: React.FC<MainScreenContentProps> = ({
                             placeholder="ID"
                             onChangeText={setId}
                             value={id}
-                            placeholderTextColor= 'color: rgb(8,27,42)'
+                            placeholderTextColor='color: rgb(8,27,42)'
                         />
-                        <View style={style1.container}></View>
+
+                        <TextInput
+                            style={[styles.input, { color: 'rgb(8,27,42)' }]}
+                            placeholder="IP publica"
+                            onChangeText={setIp}
+                            value={ip}
+                            placeholderTextColor='color: rgb(8,27,42)'
+                        />
                         <View style={style3.buttonContainer}>
                             <Button
                                 onPress={handlePressStart}
@@ -137,24 +137,6 @@ const MainScreenContent: React.FC<MainScreenContentProps> = ({
                             </>
                         )}
 
-                        <View style={[style3.buttonContainer, { marginTop: 10 }]}>
-                            <TextInput
-                                style={[styles.input, { color: 'white' }]}
-                                placeholder="IP publica"
-                                onChangeText={setIp}
-                                value={ip}
-                                placeholderTextColor={Colors.white}
-                            />
-                            <TextInput
-                                style={[styles.input, { color: 'white' }]}
-                                placeholder="Puerto"
-                                onChangeText={setPort}
-                                value={port}
-                                keyboardType='numeric'
-                                placeholderTextColor={Colors.white}
-                            />
-                        </View>
-
                         <View style={style1.content}>
                             <View style={[style3.buttonContainer, { marginTop: 10 }]}>
                                 <Button
@@ -164,25 +146,6 @@ const MainScreenContent: React.FC<MainScreenContentProps> = ({
                                     color='rgb(8,27,42)'
                                 />
                             </View>
-
-
-                            <View style={[style3.buttonContainer, { marginTop: 10 }]}>
-                                <Button
-                                    //onPress={handlePressSendUDP}
-                                    title="Enviar UDP"
-                                    color='rgb(8,27,42)'
-                                />
-                            </View>
-
-                            <View style={style3.buttonContainer}>
-                                <Button
-                                    onPress={handlePressSMS}
-                                    title="Enviar ubicación por SMS"
-                                    color='rgb(8,27,42)'
-                                />
-                            </View>
-
-
                             <View style={[style3.buttonContainer, { marginTop: 10 }]}>
                                 <Button
                                     onPress={handlePressBack}

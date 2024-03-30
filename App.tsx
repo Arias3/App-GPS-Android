@@ -2,7 +2,6 @@ import Geolocation from '@react-native-community/geolocation';
 import React, { useRef, useState } from 'react';
 import {
   AppState,
-  Linking,
   useColorScheme
 } from 'react-native';
 import TcpSocket from 'react-native-tcp-socket';
@@ -40,7 +39,7 @@ function App(): React.JSX.Element {
 
   // Estado para almacenar la dirección IP y el puerto
   const [ip, setIp] = useState<string>(''); // Aquí se almacena la dirección IP
-  const [port, setPort] = useState<string>('3000'); // Aquí se almacena el puerto
+  const port: number = 5000;// puerto
   const [id, setId] = useState<string>(''); // Aquí se almacena el user
 
   const appState = useRef(AppState.currentState);
@@ -81,14 +80,14 @@ function App(): React.JSX.Element {
   const handlePressSendTCP = async () => {
 
     if (!sendingData) {
-      
+
       // Verificar si se han ingresado la dirección IP y el puerto
       if (!id) {
         console.log('ERROR: No se ha ingresado una ID');
         return;
       }
 
-      if (!ip || !port) {
+      if (!ip) {
         console.log('ERROR: No se ha ingresado la dirección IP o el puerto');
         return;
       }
@@ -99,7 +98,7 @@ function App(): React.JSX.Element {
         // Establecer conexión TCP
         const client = await TcpSocket.connect(
           {
-            port: Number(port),
+            port: port,
             host: ip
           },
           () => {
@@ -180,17 +179,6 @@ function App(): React.JSX.Element {
     setCurrentScreen(Screen.HOME);
   };
 
-  const handlePressSMS = async () => {
-    if (!locationData.latitude || !locationData.longitude) {
-      console.log('ERROR: No fue posible obtener la información de coordenadas');
-      return;
-    }
-
-    const message = `¡Hola! Mis coordenadas son: Latitud: ${locationData.latitude}, Longitud: ${locationData.longitude}, Altitud: ${locationData.altitude || 'N/A'}, Marca de tiempo: ${locationData.timestamp ? new Date(locationData.timestamp).toLocaleString() : 'N/A'}`;
-
-    await Linking.openURL(`sms:+573242937580?body=${encodeURIComponent(message)}`);
-    console.log('Mensaje SMS enviado');
-  };
 
   return (
     <MainScreenContent
@@ -200,14 +188,11 @@ function App(): React.JSX.Element {
       handlePressStart={handlePressStart}
       style3={style3}
       handlePressBack={handlePressBack}
-      handlePressSMS={handlePressSMS}
       handlePressSendTCP={handlePressSendTCP}
       sendingData={sendingData}
       locationData={locationData}
       ip={ip}
       setIp={setIp}
-      port={port}
-      setPort={setPort}
       id={id}
       setId={setId}
     />
