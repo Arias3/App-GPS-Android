@@ -1,11 +1,13 @@
 import Geolocation from '@react-native-community/geolocation';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   AppState,
   useColorScheme
 } from 'react-native';
+import BackgroundJob from 'react-native-background-actions';
 import TcpSocket from 'react-native-tcp-socket';
 import MainScreenContent from './MainScreensContent';
+
 import { style3 } from './style1';
 
 // Definición de la interfaz para los datos de ubicación
@@ -15,7 +17,7 @@ export interface LocationData {
   altitude: number | null;
   timestamp: number | null;
 }
-
+// Definición de las pantallas
 export enum Screen {
   HOME,
   LOCATION_INFO,
@@ -71,11 +73,9 @@ function App(): React.JSX.Element {
   };
 
 
-
   const [sendingData, setSendingData] = useState(false);
   const [tcpClient, setTcpClient] = useState<any>(null);
   const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
-  const [socketConnected, setSocketConnected] = useState(false); // Estado para indicar si el socket está conectado
 
   const handlePressSendTCP = async () => {
 
@@ -170,6 +170,11 @@ function App(): React.JSX.Element {
     setSendingData(prevState => !prevState);
   };
 
+
+
+
+
+
   const handlePressStart = () => {
     setCurrentScreen(Screen.LOCATION_INFO);
     obtenerUbicacion();
@@ -178,6 +183,38 @@ function App(): React.JSX.Element {
   const handlePressBack = () => {
     setCurrentScreen(Screen.HOME);
   };
+
+  useEffect(() => {
+    // Definir la tarea en segundo plano
+    const startBackgroundTask = async () => {
+      try {
+        const taskOptions: BackgroundJobOptions = {
+          taskName: 'Example Task',
+          taskTitle: 'Example Task Title',
+          taskDesc: 'Example Task Description',
+          taskIcon: {
+            name: 'ic_notification',
+            type: 'mipmap',
+          },
+          color: '#ff00ff',
+        };
+        
+  
+        await BackgroundJob.start(taskOptions, async () => {
+          // Código para ejecutar en segundo plano
+        });
+  
+      } catch (e) {
+        console.error(e);
+      }
+    };
+  
+    startBackgroundTask();
+  
+    return () => {
+      BackgroundJob.stop(); // Detener la tarea en segundo plano al desmontar el componente
+    };
+  }, [sendingData]);
 
 
   return (
@@ -198,5 +235,4 @@ function App(): React.JSX.Element {
     />
   );
 }
-//xd
 export default App;
