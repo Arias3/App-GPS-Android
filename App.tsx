@@ -40,7 +40,7 @@ function App(): React.JSX.Element {
 
   // Estado para almacenar la dirección IP y el puerto
   const [ip, setIp] = useState<string>(''); // Aquí se almacena la dirección IP
-  const [port, setPort] = useState<string>('3000'); // Aquí se almacena el puerto
+  const [port, setPort] = useState<string>('5000'); // Aquí se almacena el puerto
   const [id, setId] = useState<string>(''); // Aquí se almacena el user
 
   const appState = useRef(AppState.currentState);
@@ -134,7 +134,7 @@ function App(): React.JSX.Element {
             const currentHour24 = `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}:${String(currentSeconds).padStart(2, '0')}`;
 
             // Construye el mensaje con la ubicación y la hora formateada
-            const message = `${locationData.latitude} ${locationData.longitude} ${currentHour24} ${id}`;
+            const message = `${locationData.latitude} ${locationData.longitude} ${new Date(locationData.timestamp).toLocaleDateString()} ${currentHour24} ${id}`;
 
             const locationDataJSON = JSON.stringify(message);
             client.write(locationDataJSON); // Escribir los datos en el cliente TCP
