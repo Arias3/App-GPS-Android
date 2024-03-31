@@ -7,6 +7,7 @@ import {
 import TcpSocket from 'react-native-tcp-socket';
 import MainScreenContent from './MainScreensContent';
 
+
 import { style3 } from './style1';
 
 // Definición de la interfaz para los datos de ubicación
