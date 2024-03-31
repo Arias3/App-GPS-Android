@@ -1,10 +1,9 @@
 import Geolocation from '@react-native-community/geolocation';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   AppState,
   useColorScheme
 } from 'react-native';
-import BackgroundJob from 'react-native-background-actions';
 import TcpSocket from 'react-native-tcp-socket';
 import MainScreenContent from './MainScreensContent';
 
@@ -76,7 +75,6 @@ function App(): React.JSX.Element {
   const [sendingData, setSendingData] = useState(false);
   const [tcpClient, setTcpClient] = useState<any>(null);
   const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
-
   const handlePressSendTCP = async () => {
 
     if (!sendingData) {
@@ -87,7 +85,7 @@ function App(): React.JSX.Element {
         return;
       }
 
-      if (!ip) {
+      if (!ip || !port) {
         console.log('ERROR: No se ha ingresado la dirección IP o el puerto');
         return;
       }
@@ -98,7 +96,7 @@ function App(): React.JSX.Element {
         // Establecer conexión TCP
         const client = await TcpSocket.connect(
           {
-            port: port,
+            port: Number(port),
             host: ip
           },
           () => {
@@ -133,7 +131,7 @@ function App(): React.JSX.Element {
             const currentHour24 = `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}:${String(currentSeconds).padStart(2, '0')}`;
 
             // Construye el mensaje con la ubicación y la hora formateada
-            const message = `${locationData.latitude} ${locationData.longitude} ${currentHour24} ${id}`;
+            const message = `${locationData.latitude} ${locationData.longitude} ${new Date(locationData.timestamp).toLocaleDateString()} ${currentHour24} ${id}`;
 
             const locationDataJSON = JSON.stringify(message);
             client.write(locationDataJSON); // Escribir los datos en el cliente TCP
@@ -173,8 +171,6 @@ function App(): React.JSX.Element {
 
 
 
-
-
   const handlePressStart = () => {
     setCurrentScreen(Screen.LOCATION_INFO);
     obtenerUbicacion();
@@ -183,40 +179,6 @@ function App(): React.JSX.Element {
   const handlePressBack = () => {
     setCurrentScreen(Screen.HOME);
   };
-
-  useEffect(() => {
-    // Definir la tarea en segundo plano
-    const startBackgroundTask = async () => {
-      try {
-        const taskOptions: BackgroundJobOptions = {
-          taskName: 'Example Task',
-          taskTitle: 'Example Task Title',
-          taskDesc: 'Example Task Description',
-          taskIcon: {
-            name: 'ic_notification',
-            type: 'mipmap',
-          },
-          color: '#ff00ff',
-        };
-        
-  
-        await BackgroundJob.start(taskOptions, async () => {
-          // Código para ejecutar en segundo plano
-        });
-  
-      } catch (e) {
-        console.error(e);
-      }
-    };
-  
-    startBackgroundTask();
-  
-    return () => {
-      BackgroundJob.stop(); // Detener la tarea en segundo plano al desmontar el componente
-    };
-  }, [sendingData]);
-
-
   return (
     <MainScreenContent
       isDarkMode={isDarkMode}
