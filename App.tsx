@@ -40,7 +40,7 @@ function App(): React.JSX.Element {
 
   // Estado para almacenar la dirección IP y el puerto
   const [ip, setIp] = useState<string>(''); // Aquí se almacena la dirección IP
-  const [port, setPort] = useState<string>('3000'); // Aquí se almacena el puerto
+  const [port, setPort] = useState<string>('5000'); // Aquí se almacena el puerto
   const [id, setId] = useState<string>(''); // Aquí se almacena el user
 
   const appState = useRef(AppState.currentState);
