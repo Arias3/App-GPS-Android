@@ -53,6 +53,7 @@ function App(): React.JSX.Element {
         (position) => {
           const { latitude, longitude, altitude } = position.coords;
           const timestamp = position.timestamp; // Obtiene la marca de tiempo actual
+          
 
           // Asegúrate de que altitude sea un número, incluso si es null
           const alt = altitude !== null ? altitude : 0;
@@ -134,7 +135,7 @@ function App(): React.JSX.Element {
             const currentHour24 = `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}:${String(currentSeconds).padStart(2, '0')}`;
 
             // Construye el mensaje con la ubicación y la hora formateada
-            const message = `${locationData.latitude} ${locationData.longitude} ${currentHour24} ${id}`;
+            const message = `${locationData.latitude} ${locationData.longitude} ${new Date(locationData.timestamp).toLocaleDateString()} ${currentHour24} ${id}`;
 
             const locationDataJSON = JSON.stringify(message);
             client.write(locationDataJSON); // Escribir los datos en el cliente TCP
