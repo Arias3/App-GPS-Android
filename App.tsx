@@ -53,6 +53,7 @@ function App(): React.JSX.Element {
         (position) => {
           const { latitude, longitude, altitude } = position.coords;
           const timestamp = position.timestamp; // Obtiene la marca de tiempo actual
+          
 
           // Asegúrate de que altitude sea un número, incluso si es null
           const alt = altitude !== null ? altitude : 0;
