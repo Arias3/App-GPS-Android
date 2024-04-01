@@ -1,13 +1,11 @@
 import Geolocation from '@react-native-community/geolocation';
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AppState,
   useColorScheme
 } from 'react-native';
-import TcpSocket from 'react-native-tcp-socket';
+import BackgroundService from 'react-native-background-actions';
 import MainScreenContent from './MainScreensContent';
-
-
 import { style3 } from './style1';
 
 // Definición de la interfaz para los datos de ubicación
@@ -45,7 +43,6 @@ function App(): React.JSX.Element {
   const [id, setId] = useState<string>(''); // Aquí se almacena el user
 
   const appState = useRef(AppState.currentState);
-  const [appStateVisible, setAppStateVisible] = useState(appState.current);
 
   // Función para obtener la ubicación actual
   const obtenerUbicacion = (): Promise<{ latitude: number; longitude: number; altitude: number; timestamp: number }> => {
@@ -72,114 +69,92 @@ function App(): React.JSX.Element {
     });
   };
 
-
   const [sendingData, setSendingData] = useState(false);
   const [tcpClient, setTcpClient] = useState<any>(null);
   const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
-  const handlePressSendTCP = async () => {
+  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-    if (!sendingData) {
+  // Define una referencia para el estado sendingData
+  const sendingDataRef = useRef(sendingData);
 
-      // Verificar si se han ingresado la dirección IP y el puerto
-      if (!id) {
-        console.log('ERROR: No se ha ingresado una ID');
-        return;
-      }
+  const handlePressSendTCP = () => {
 
-      if (!ip || !port) {
-        console.log('ERROR: No se ha ingresado la dirección IP o el puerto');
-        return;
-      }
-
-      console.log('Iniciando envío de datos...');
-
-      try {
-        // Establecer conexión TCP
-        const client = await TcpSocket.connect(
-          {
-            port: Number(port),
-            host: ip
-          },
-          () => {
-            console.log('Conexión establecida correctamente');
-          }
-        );
-
-        client.on('data', function (locationDataJSON) {
-          console.log('message was received', locationDataJSON);
-
-          const response = JSON.parse(locationDataJSON.toString());
-
-          if (response.hasOwnProperty('latitude') && response.hasOwnProperty('longitude')) {
-            const latitude = response.latitude;
-            const longitude = response.longitude;
-
-            console.log('Coordenadas recibidas:', latitude, longitude);
-          }
-        });
-
-        const sendDataTCP = async () => {
-          try {
-            const locationData = await obtenerUbicacion(); // Espera los datos de ubicación actualizados
-
-            // Obtiene la fecha y hora actual
-            const currentDate = new Date();
-            const currentHours = currentDate.getHours();
-            const currentMinutes = currentDate.getMinutes();
-            const currentSeconds = currentDate.getSeconds();
-
-            // Formatea la hora actual en formato de 24 horas
-            const currentHour24 = `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}:${String(currentSeconds).padStart(2, '0')}`;
-
-            // Construye el mensaje con la ubicación y la hora formateada
-            const message = `${locationData.latitude} ${locationData.longitude} ${new Date(locationData.timestamp).toLocaleDateString()} ${currentHour24} ${id}`;
-
-            const locationDataJSON = JSON.stringify(message);
-            client.write(locationDataJSON); // Escribir los datos en el cliente TCP
-            console.log('Datos enviados:', locationDataJSON); // Registro de envío de datos
-          } catch (error) {
-            console.error('Error al enviar datos por TCP:', error);
-          }
-        };
-
-        // Establecer intervalo para enviar datos periódicamente
-        const interval = 2000; // Intervalo actualizado a 2 segundos
-        const sendDataInterval = setInterval(sendDataTCP, interval);
-
-        // Almacenar el socket y el intervalo en el estado
-        setTcpClient(client);
-        setIntervalId(sendDataInterval);
-      } catch (error) {
-        console.error('Error al conectar por TCP:', error);
-      }
-    } else {
-      // Detener el envío de datos
-      if (tcpClient) {
-        tcpClient.end(); // Cerrar el socket
-        console.log('Se detuvo el envio de datos');
-      }
-      // Detener el intervalo
-      if (intervalId !== null) {
-        clearInterval(intervalId);
-        setIntervalId(null);
-      }
+    // Verificar si se han ingresado la dirección IP y el puerto
+    if (!id) {
+      console.log('ERROR: No se ha ingresado una ID');
+      return;
     }
+
+    if (!ip || !port) {
+      console.log('ERROR: No se ha ingresado la dirección IP o el puerto');
+      return;
+    }
+
+    console.log('Validaciones correctas');
 
     // Cambiar el estado de sendingData
     setSendingData(prevState => !prevState);
   };
+  
+  // Actualiza la referencia cuando cambia el estado sendingData
+  useEffect(() => {
+    sendingDataRef.current = sendingData;
+  }, [sendingData]);
+
+  // Define la función para ejecutar en segundo plano
+  const sendTCPInBackground = useCallback(async () => {
+    console.log('Iniciando envío de datos en segundo plano...');
+    
+    while (true) {
+      if (sendingDataRef.current) {
+        console.log('holi');
+      }
+      await sleep(1000); // Espera 1 segundo antes de volver a verificar sendingData
+    }
+  }, []);
+
+  // Inicia sendTCPInBackground cuando sea necesario
+  useEffect(() => {
+    if (sendingData) {
+      sendTCPInBackground();
+    }
+  }, [sendTCPInBackground, sendingData]);
 
 
-
-
+  // Registra la tarea en segundo plano
+  const options = {
+    taskName: 'Envío de datos TCP',
+    taskTitle: 'Enviando datos por TCP',
+    taskDesc: 'Enviando datos de ubicación por TCP',
+    taskIcon: {
+      name: 'ic_launcher',
+      type: 'mipmap',
+    },
+    color: '#ff00ff',
+  };
   const handlePressStart = () => {
     setCurrentScreen(Screen.LOCATION_INFO);
     obtenerUbicacion();
+    try {
+      BackgroundService.start(sendTCPInBackground, options);
+      console.log('Tarea en segundo plano iniciada correctamente');
+    } catch (error) {
+      console.error('Error al iniciar la tarea en segundo plano:', error);
+    }
+
   };
 
   const handlePressBack = () => {
     setCurrentScreen(Screen.HOME);
+    try {
+      BackgroundService.stop();
+      console.log('Tarea en segundo plano detenida correctamente');
+    } catch (error) {
+      console.error('Error al detener la tarea en segundo plano:', error);
+    }
+
   };
+
   return (
     <MainScreenContent
       isDarkMode={isDarkMode}
@@ -198,4 +173,5 @@ function App(): React.JSX.Element {
     />
   );
 }
+
 export default App;
