@@ -79,7 +79,7 @@ const MainScreenContent: React.FC<MainScreenContentProps> = ({
                         <View style={style3.buttonContainer}>
                             <Button
                                 onPress={handlePressStart}
-                                title="Comenzar Track"
+                                title="Acceder"
                                 color='rgb(8,27,42)'
                             />
                         </View>

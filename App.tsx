@@ -5,6 +5,7 @@ import {
   useColorScheme
 } from 'react-native';
 import BackgroundService from 'react-native-background-actions';
+import TcpSocket from 'react-native-tcp-socket';
 import MainScreenContent from './MainScreensContent';
 import { style3 } from './style1';
 
@@ -72,12 +73,20 @@ function App(): React.JSX.Element {
   const [sendingData, setSendingData] = useState(false);
   const [tcpClient, setTcpClient] = useState<any>(null);
   const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
-  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+
+  const sleep = (ms: number): Promise<NodeJS.Timeout> => {
+    return new Promise(resolve => setTimeout(resolve as () => void, ms));
+  };
 
   // Define una referencia para el estado sendingData
   const sendingDataRef = useRef(sendingData);
 
   const handlePressSendTCP = () => {
+    if (!locationData.latitude || !locationData.longitude) {
+      console.log('ERROR: No fue posible obtener la información de coordenadasTCP');
+      return;
+    }
 
     // Verificar si se han ingresado la dirección IP y el puerto
     if (!id) {
@@ -85,33 +94,86 @@ function App(): React.JSX.Element {
       return;
     }
 
-    if (!ip || !port) {
-      console.log('ERROR: No se ha ingresado la dirección IP o el puerto');
-      return;
+    if (!sendingData) {
+
+      console.log('Credenciales correctas');
+      console.log('Empezando el envio de datos');
     }
-
-    console.log('Validaciones correctas');
-
+    else {
+      // Detener el envío de datos
+      if (tcpClient) {
+        tcpClient.end(); // Cerrar el socket
+        console.log('Se detuvo el envio de datos');
+      }
+      // Detener el intervalo
+      if (intervalId !== null) {
+        clearInterval(intervalId);
+        setIntervalId(null);
+      }
+      console.log('Deteniendo el envio de datos');
+    }
     // Cambiar el estado de sendingData
     setSendingData(prevState => !prevState);
   };
-  
+
   // Actualiza la referencia cuando cambia el estado sendingData
   useEffect(() => {
     sendingDataRef.current = sendingData;
   }, [sendingData]);
 
+
   // Define la función para ejecutar en segundo plano
   const sendTCPInBackground = useCallback(async () => {
-    console.log('Iniciando envío de datos en segundo plano...');
     
+    console.log('Aun estoy en segundo plano :p');
+    try {
+      const client = TcpSocket.connect(
+        {
+          port: Number(port),
+          host: ip
+        },
+        () => {
+          console.log('Conexión establecida correctamente');
+        }
+      );
+      console.log('Se inicializó el cliente:', client);
+    } catch {
+      console.log('no se pudo crear el socket')
+    }
+
+    const sendDataTCP = async () => {
+      try {
+        const locationData = await obtenerUbicacion(); // Espera los datos de ubicación actualizados
+
+        // Obtiene la fecha y hora actual
+        const currentDate = new Date();
+        const currentHours = currentDate.getHours();
+        const currentMinutes = currentDate.getMinutes();
+        const currentSeconds = currentDate.getSeconds();
+
+        // Formatea la hora actual en formato de 24 horas
+        const currentHour24 = `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}:${String(currentSeconds).padStart(2, '0')}`;
+
+        // Construye el mensaje con la ubicación y la hora formateada
+        const message = `${locationData.latitude} ${locationData.longitude} ${new Date(locationData.timestamp).toLocaleDateString()} ${currentHour24} ${id}`;
+
+        const locationDataJSON = JSON.stringify(message);
+        client.write(locationDataJSON); // Escribir los datos en el cliente TCP
+        console.log('Datos enviados:', locationDataJSON); // Registro de envío de datos
+      } catch (error) {
+        console.error('Error al enviar datos por TCP:', error);
+      }
+    };
+
     while (true) {
       if (sendingDataRef.current) {
-        console.log('holi');
+        console.log('hola mundo')
       }
-      await sleep(1000); // Espera 1 segundo antes de volver a verificar sendingData
+      await sleep(1000);
     }
   }, []);
+
+
 
   // Inicia sendTCPInBackground cuando sea necesario
   useEffect(() => {
@@ -119,7 +181,6 @@ function App(): React.JSX.Element {
       sendTCPInBackground();
     }
   }, [sendTCPInBackground, sendingData]);
-
 
   // Registra la tarea en segundo plano
   const options = {
@@ -132,6 +193,7 @@ function App(): React.JSX.Element {
     },
     color: '#ff00ff',
   };
+
   const handlePressStart = () => {
     setCurrentScreen(Screen.LOCATION_INFO);
     obtenerUbicacion();
@@ -141,7 +203,6 @@ function App(): React.JSX.Element {
     } catch (error) {
       console.error('Error al iniciar la tarea en segundo plano:', error);
     }
-
   };
 
   const handlePressBack = () => {
@@ -152,7 +213,11 @@ function App(): React.JSX.Element {
     } catch (error) {
       console.error('Error al detener la tarea en segundo plano:', error);
     }
-
+    if (sendingData) {
+      // Cambiar el estado de sendingData
+      setSendingData(prevState => !prevState);
+      console.log('cancele el envio pq me salí a Home')
+    }
   };
 
   return (

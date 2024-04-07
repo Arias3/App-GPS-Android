@@ -1,0 +1,61 @@
+if (sendingDataRef.current) {
+    try {
+        // Establecer conexión TCP
+        const client = await TcpSocket.connect(
+            {
+                port: Number(port),
+                host: ip
+            },
+            () => {
+                console.log('Conexión establecida correctamente');
+            }
+        );
+
+        client.on('data', function (locationDataJSON) {
+            console.log('message was received', locationDataJSON);
+
+            const response = JSON.parse(locationDataJSON.toString());
+
+            if (response.hasOwnProperty('latitude') && response.hasOwnProperty('longitude')) {
+                const latitude = response.latitude;
+                const longitude = response.longitude;
+
+                console.log('Coordenadas recibidas:', latitude, longitude);
+            }
+        });
+
+        const sendDataTCP = async () => {
+            try {
+                const locationData = await obtenerUbicacion(); // Espera los datos de ubicación actualizados
+
+                // Obtiene la fecha y hora actual
+                const currentDate = new Date();
+                const currentHours = currentDate.getHours();
+                const currentMinutes = currentDate.getMinutes();
+                const currentSeconds = currentDate.getSeconds();
+
+                // Formatea la hora actual en formato de 24 horas
+                const currentHour24 = `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}:${String(currentSeconds).padStart(2, '0')}`;
+
+                // Construye el mensaje con la ubicación y la hora formateada
+                const message = `${locationData.latitude} ${locationData.longitude} ${new Date(locationData.timestamp).toLocaleDateString()} ${currentHour24} ${id}`;
+
+                const locationDataJSON = JSON.stringify(message);
+                client.write(locationDataJSON); // Escribir los datos en el cliente TCP
+                console.log('Datos enviados:', locationDataJSON); // Registro de envío de datos
+            } catch (error) {
+                console.error('Error al enviar datos por TCP:', error);
+            }
+        };
+
+        // Establecer intervalo para enviar datos periódicamente
+        const interval = 2000; // Intervalo actualizado a 2 segundos
+        const sendDataInterval = setInterval(sendDataTCP, interval);
+
+        // Almacenar el socket y el intervalo en el estado
+        setTcpClient(client);
+        setIntervalId(sendDataInterval);
+    } catch (error) {
+        console.error('Error al conectar por TCP:', error);
+    }
+}
