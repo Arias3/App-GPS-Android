@@ -113,7 +113,29 @@ function App(): React.JSX.Element {
 
   // Define la función para ejecutar en segundo plano
   const sendTCPInBackground = useCallback(async () => {
-        
+    const mensaje = async () => {
+      try {
+        const locationData = await obtenerUbicacion(); // Espera los datos de ubicación actualizados
+
+        // Obtiene la fecha y hora actual
+        const currentDate = new Date();
+        const currentHours = currentDate.getHours();
+        const currentMinutes = currentDate.getMinutes();
+        const currentSeconds = currentDate.getSeconds();
+
+        // Formatea la hora actual en formato de 24 horas
+        const currentHour24 = `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}:${String(currentSeconds).padStart(2, '0')}`;
+
+        // Construye el mensaje con la ubicación y la hora formateada
+        const message = `${locationData.latitude} ${locationData.longitude} ${new Date(locationData.timestamp).toLocaleDateString()} ${currentHour24} ${id}`;
+
+        return message; // Devuelve el mensaje generado
+      } catch (error) {
+        console.error('Error al generar el mensaje', error);
+        throw error; // Relanza el error para que sea manejado externamente si es necesario
+      }
+    };
+
     while (true) {
       if (sendingDataRef.current) {
         console.log('hola mundo')
