@@ -5,6 +5,7 @@ import {
   useColorScheme
 } from 'react-native';
 import BackgroundService from 'react-native-background-actions';
+import dgram from 'react-native-udp';
 import MainScreenContent from './MainScreensContent';
 import { style3 } from './style1';
 
@@ -34,10 +35,14 @@ function App(): React.JSX.Element {
     altitude: null,
     timestamp: null,
   });
-  // Estado para controlar qué pantalla se muestra
-  const [currentScreen, setCurrentScreen] = useState<Screen>(Screen.HOME);
 
   const [id, setId] = useState<string>(''); // Aquí se almacena el user
+  const [ip1, setIp1] = useState<string>(''); // Aquí se almacena ip1
+  const [ip2, setIp2] = useState<string>(''); // Aquí se almacena ip1
+  const [ip3, setIp3] = useState<string>(''); // Aquí se almacena ip1
+
+  // Estado para controlar qué pantalla se muestra
+  const [currentScreen, setCurrentScreen] = useState<Screen>(Screen.HOME);
 
   const appState = useRef(AppState.currentState);
 
@@ -69,50 +74,79 @@ function App(): React.JSX.Element {
   const [sendingData, setSendingData] = useState(false);
   const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
 
-  const sleep = (ms: number): Promise<NodeJS.Timeout> => {
-    return new Promise(resolve => setTimeout(resolve as () => void, ms));
-  };
-
   // Define una referencia para el estado sendingData
   const sendingDataRef = useRef(sendingData);
 
-  const handlePressSendTCP = () => {
+  const handlePressSendUDP = () => {
     if (!locationData.latitude || !locationData.longitude) {
-      console.log('ERROR: No fue posible obtener la información de coordenadasTCP');
+      console.log('ERROR: No fue posible obtener la información de coordenadas');
       return;
     }
 
     // Verificar si se han ingresado la dirección IP y el puerto
-    if (!id) {
-      console.log('ERROR: No se ha ingresado una ID');
+    if (!id || !ip1 || !ip2) {
+      console.log('ERROR: Falta ingresar la ID o las direcciones IP');
       return;
     }
 
     if (!sendingData) {
-
       console.log('Credenciales correctas');
       console.log('Empezando el envio de datos');
     }
+
     else {
+      console.log('Deteniendo el envio de datos');
       // Detener el intervalo
       if (intervalId !== null) {
         clearInterval(intervalId);
         setIntervalId(null);
       }
-      console.log('Deteniendo el envio de datos');
     }
     // Cambiar el estado de sendingData
     setSendingData(prevState => !prevState);
   };
 
-  // Actualiza la referencia cuando cambia el estado sendingData
-  useEffect(() => {
-    sendingDataRef.current = sendingData;
-  }, [sendingData]);
+  const sendUDPData1 = useCallback((message: string) => {
+    const socket = dgram.createSocket({ type: 'udp4' });
+    socket.on('error', (error) => {
+      console.error('Error en el socket UDP:', error);
+      socket.close(); // Cierra el socket en caso de error
+    });
 
+    socket.bind(5000, () => {
+      socket.send(message, 0, message.length, 5000, ip1, function (err) {
+        if (err) {
+          console.error('Error al enviar datos por UDP:', err);
+        } else {
+          console.log('Enviado a 1');
+        }
+        socket.close(); // Cierra el socket después de enviar el mensaje
+      });
+    });
+  }, [ip1, ip2,ip3]);
+
+  const sendUDPData2 = useCallback((message: string) => {
+    const socket = dgram.createSocket({ type: 'udp4' });
+    socket.on('error', (error) => {
+      console.error('Error en el socket UDP:', error);
+      socket.close(); // Cierra el socket en caso de error
+    });
+
+    socket.bind(5000, () => {
+      socket.send(message, 0, message.length, 5000, ip2, function (err) {
+        if (err) {
+          console.error('Error al enviar datos por UDP:', err);
+        } else {
+          console.log('Enviado a 2');
+        }
+        socket.close(); // Cierra el socket después de enviar el mensaje
+      });
+    });
+  }, [ip1, ip2,ip3]);
 
   // Define la función para ejecutar en segundo plano
-  const sendTCPInBackground = useCallback(async () => {
+  const sendUDPInBackground = useCallback(async () => {
+
     const mensaje = async () => {
       try {
         const locationData = await obtenerUbicacion(); // Espera los datos de ubicación actualizados
@@ -135,28 +169,38 @@ function App(): React.JSX.Element {
         throw error; // Relanza el error para que sea manejado externamente si es necesario
       }
     };
-
-    while (true) {
-      if (sendingDataRef.current) {
-        console.log('hola mundo')
+    console.log('Aun estoy en segundo plano :p');
+    while (sendingDataRef.current) {
+      try {
+        const message = await mensaje();
+        sendUDPData1(message);
+        sendUDPData2(message);
+        console.log(message);
+      } catch (error) {
+        console.error('Error al enviar datos por UDP:', error);
       }
-      await sleep(1000);
+      // Esperar 5 segundos antes de enviar el próximo dato
+      await new Promise(resolve => setTimeout(resolve, 5000));
     }
-  }, []);
+  }, [sendUDPData1, sendingDataRef,id]);
 
+  // Actualiza la referencia cuando cambia el estado sendingData
+  useEffect(() => {
+    sendingDataRef.current = sendingData;
+  }, [sendingData]);
 
-  // Inicia sendTCPInBackground cuando sea necesario
+  // Inicia sendUDPInBackground cuando sea necesario
   useEffect(() => {
     if (sendingData) {
-      sendTCPInBackground();
+      sendUDPInBackground();
     }
-  }, [sendTCPInBackground, sendingData]);
+  }, [sendUDPInBackground, sendingData]);
 
   // Registra la tarea en segundo plano
   const options = {
-    taskName: 'Envío de datos TCP',
-    taskTitle: 'Enviando datos por TCP',
-    taskDesc: 'Enviando datos de ubicación por TCP',
+    taskName: 'Envío de datos UDP',
+    taskTitle: 'Enviando datos por UDP',
+    taskDesc: 'Enviando datos de ubicación por UDP',
     taskIcon: {
       name: 'ic_launcher',
       type: 'mipmap',
@@ -168,7 +212,7 @@ function App(): React.JSX.Element {
     setCurrentScreen(Screen.LOCATION_INFO);
     obtenerUbicacion();
     try {
-      BackgroundService.start(sendTCPInBackground, options);
+      BackgroundService.start(sendUDPInBackground, options);
       console.log('Tarea en segundo plano iniciada correctamente');
     } catch (error) {
       console.error('Error al iniciar la tarea en segundo plano:', error);
@@ -198,11 +242,17 @@ function App(): React.JSX.Element {
       handlePressStart={handlePressStart}
       style3={style3}
       handlePressBack={handlePressBack}
-      handlePressSendTCP={handlePressSendTCP}
+      handlePressSendUDP={handlePressSendUDP}
       sendingData={sendingData}
       locationData={locationData}
       id={id}
+      ip1={ip1}
+      ip2={ip2}
+      ip3={ip3}
       setId={setId}
+      setIp1={setIp1}
+      setIp2={setIp2}
+      setIp3={setIp3}
     />
   );
 }

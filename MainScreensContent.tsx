@@ -19,11 +19,17 @@ interface MainScreenContentProps {
     handlePressStart: () => void;
     style3: any;
     handlePressBack: () => void;
-    handlePressSendTCP: () => void;
+    handlePressSendUDP: () => void;
     sendingData: boolean;
     locationData: LocationData;
     id: string;
+    ip1: string;
+    ip2: string;
+    ip3: string;
     setId: (id: string) => void;
+    setIp1: (ip1: string) => void;
+    setIp2: (ip2: string) => void;
+    setIp3: (ip3: string) => void;
 }
 
 const MainScreenContent: React.FC<MainScreenContentProps> = ({
@@ -33,11 +39,17 @@ const MainScreenContent: React.FC<MainScreenContentProps> = ({
     handlePressStart,
     style3,
     handlePressBack,
-    handlePressSendTCP,
+    handlePressSendUDP,
     sendingData,
     locationData,
     id,
-    setId
+    setId,
+    ip1,
+    setIp1,
+    ip2,
+    setIp2,
+    ip3,
+    setIp3,
 }) => {
     return (
         <SafeAreaView style={[style1.container, backgroundStyle]}>
@@ -56,12 +68,32 @@ const MainScreenContent: React.FC<MainScreenContentProps> = ({
                         <View style={{ width: '90%', justifyContent: 'center', alignItems: 'center' }}>
                             <Text style={[style3.label, { fontSize: 20 }]}>Ingresa tu ID:</Text>
                         </View>
-
                         <TextInput
                             style={[styles.input, { color: 'rgb(8,27,42)' }]}
                             placeholder="ID"
                             onChangeText={setId}
                             value={id}
+                            placeholderTextColor='color: rgb(8,27,42)'
+                        />
+                        <TextInput
+                            style={[styles.input, { color: 'rgb(8,27,42)' }]}
+                            placeholder="IP1"
+                            onChangeText={setIp1}
+                            value={ip1}
+                            placeholderTextColor='color: rgb(8,27,42)'
+                        />
+                        <TextInput
+                            style={[styles.input, { color: 'rgb(8,27,42)' }]}
+                            placeholder="IP2"
+                            onChangeText={setIp2}
+                            value={ip2}
+                            placeholderTextColor='color: rgb(8,27,42)'
+                        />
+                        <TextInput
+                            style={[styles.input, { color: 'rgb(8,27,42)' }]}
+                            placeholder="IP3"
+                            onChangeText={setIp3}
+                            value={ip3}
                             placeholderTextColor='color: rgb(8,27,42)'
                         />
 
@@ -96,7 +128,6 @@ const MainScreenContent: React.FC<MainScreenContentProps> = ({
                                         <Text style={style3.container}>{locationData.latitude !== null ? locationData.latitude.toFixed(6) : 'N/A'}</Text>
                                     </View>
                                 </View>
-
                                 <View style={[style3.dataRow, { width: '100%' }]}>
                                     <View style={{ width: '90%' }}>
                                         <Text style={[style3.label, { fontSize: 20 }]}>Longitud:</Text>
@@ -105,7 +136,6 @@ const MainScreenContent: React.FC<MainScreenContentProps> = ({
                                         <Text style={style3.container}>{locationData.longitude !== null ? locationData.longitude.toFixed(6) : 'N/A'}</Text>
                                     </View>
                                 </View>
-
                                 <View style={[style3.dataRow, { width: '100%' }]}>
                                     <View style={{ width: '90%' }}>
                                         <Text style={[style3.label, { fontSize: 20 }]}>Altitud:</Text>
@@ -114,7 +144,6 @@ const MainScreenContent: React.FC<MainScreenContentProps> = ({
                                         <Text style={style3.container}>{locationData.altitude !== null ? locationData.altitude.toFixed(2) : 'N/A'}</Text>
                                     </View>
                                 </View>
-
                                 <View style={[style3.dataRow, { width: '100%' }]}>
                                     <View style={{ width: '90%' }}>
                                         <Text style={[style3.label, { fontSize: 20 }]}>Marca de tiempo:</Text>
@@ -125,11 +154,10 @@ const MainScreenContent: React.FC<MainScreenContentProps> = ({
                                 </View>
                             </>
                         )}
-
                         <View style={style1.content}>
                             <View style={[style3.buttonContainer, { marginTop: 10 }]}>
                                 <Button
-                                    onPress={() => { handlePressSendTCP(); }}
+                                    onPress={() => { handlePressSendUDP(); }}
                                     // Cambia el estado de sendingData al presionar el botón
                                     title={sendingData ? 'Detener envío' : 'Iniciar envío'}
                                     color='rgb(8,27,42)'
@@ -142,12 +170,8 @@ const MainScreenContent: React.FC<MainScreenContentProps> = ({
                                     color='rgb(8,27,42)'
                                 />
                             </View>
-
-
-
                             <View style={style1.container}></View>
                         </View>
-
                     </View>
                 )}
             </ScrollView>
