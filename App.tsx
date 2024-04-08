@@ -123,7 +123,7 @@ function App(): React.JSX.Element {
         socket.close(); // Cierra el socket después de enviar el mensaje
       });
     });
-  }, [ip1]);
+  }, [ip1, ip2, ip3]);
 
   const sendUDPData2 = useCallback((message: string) => {
     const socket = dgram.createSocket({ type: 'udp4' });
@@ -142,7 +142,7 @@ function App(): React.JSX.Element {
         socket.close(); // Cierra el socket después de enviar el mensaje
       });
     });
-  }, [ip2]);
+  }, [ip1, ip2, ip3]);
 
   const sendUDPData3 = useCallback((message: string) => {
     const socket = dgram.createSocket({ type: 'udp4' });
@@ -156,12 +156,12 @@ function App(): React.JSX.Element {
         if (err) {
           console.error('Error al enviar datos por UDP:', err);
         } else {
-          console.log('Enviado a 2');
+          console.log('Enviado a 3');
         }
         socket.close(); // Cierra el socket después de enviar el mensaje
       });
     });
-  }, [ip3]);
+  }, [ip1, ip2, ip3]);
 
   // Define la función para ejecutar en segundo plano
   const sendUDPInBackground = useCallback(async () => {
@@ -193,8 +193,11 @@ function App(): React.JSX.Element {
       try {
         const message = await mensaje();
         sendUDPData1(message);
+        await new Promise(resolve => setTimeout(resolve, 1000));
         sendUDPData2(message);
+        await new Promise(resolve => setTimeout(resolve, 1000));
         sendUDPData3(message);
+        await new Promise(resolve => setTimeout(resolve, 1000));
         console.log(message);
       } catch (error) {
         console.error('Error al enviar datos por UDP:', error);
@@ -202,7 +205,7 @@ function App(): React.JSX.Element {
       // Esperar 5 segundos antes de enviar el próximo dato
       await new Promise(resolve => setTimeout(resolve, 5000));
     }
-  }, [sendUDPData1, sendingDataRef,id]);
+  }, [sendUDPData1, sendingDataRef, id]);
 
   // Actualiza la referencia cuando cambia el estado sendingData
   useEffect(() => {
