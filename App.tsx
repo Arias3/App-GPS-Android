@@ -123,7 +123,7 @@ function App(): React.JSX.Element {
         socket.close(); // Cierra el socket después de enviar el mensaje
       });
     });
-  }, [ip1, ip2,ip3]);
+  }, [ip1]);
 
   const sendUDPData2 = useCallback((message: string) => {
     const socket = dgram.createSocket({ type: 'udp4' });
@@ -142,7 +142,26 @@ function App(): React.JSX.Element {
         socket.close(); // Cierra el socket después de enviar el mensaje
       });
     });
-  }, [ip1, ip2,ip3]);
+  }, [ip2]);
+
+  const sendUDPData3 = useCallback((message: string) => {
+    const socket = dgram.createSocket({ type: 'udp4' });
+    socket.on('error', (error) => {
+      console.error('Error en el socket UDP:', error);
+      socket.close(); // Cierra el socket en caso de error
+    });
+
+    socket.bind(5000, () => {
+      socket.send(message, 0, message.length, 5000, ip3, function (err) {
+        if (err) {
+          console.error('Error al enviar datos por UDP:', err);
+        } else {
+          console.log('Enviado a 2');
+        }
+        socket.close(); // Cierra el socket después de enviar el mensaje
+      });
+    });
+  }, [ip3]);
 
   // Define la función para ejecutar en segundo plano
   const sendUDPInBackground = useCallback(async () => {
@@ -175,6 +194,7 @@ function App(): React.JSX.Element {
         const message = await mensaje();
         sendUDPData1(message);
         sendUDPData2(message);
+        sendUDPData3(message);
         console.log(message);
       } catch (error) {
         console.error('Error al enviar datos por UDP:', error);
