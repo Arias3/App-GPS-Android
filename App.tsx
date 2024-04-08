@@ -5,7 +5,6 @@ import {
   useColorScheme
 } from 'react-native';
 import BackgroundService from 'react-native-background-actions';
-import TcpSocket from 'react-native-tcp-socket';
 import MainScreenContent from './MainScreensContent';
 import { style3 } from './style1';
 
@@ -38,9 +37,6 @@ function App(): React.JSX.Element {
   // Estado para controlar qué pantalla se muestra
   const [currentScreen, setCurrentScreen] = useState<Screen>(Screen.HOME);
 
-  // Estado para almacenar la dirección IP y el puerto
-  const [ip, setIp] = useState<string>(''); // Aquí se almacena la dirección IP
-  const port: number = 5000;// puerto
   const [id, setId] = useState<string>(''); // Aquí se almacena el user
 
   const appState = useRef(AppState.currentState);
@@ -71,9 +67,7 @@ function App(): React.JSX.Element {
   };
 
   const [sendingData, setSendingData] = useState(false);
-  const [tcpClient, setTcpClient] = useState<any>(null);
   const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
-
 
   const sleep = (ms: number): Promise<NodeJS.Timeout> => {
     return new Promise(resolve => setTimeout(resolve as () => void, ms));
@@ -100,11 +94,6 @@ function App(): React.JSX.Element {
       console.log('Empezando el envio de datos');
     }
     else {
-      // Detener el envío de datos
-      if (tcpClient) {
-        tcpClient.end(); // Cerrar el socket
-        console.log('Se detuvo el envio de datos');
-      }
       // Detener el intervalo
       if (intervalId !== null) {
         clearInterval(intervalId);
@@ -124,47 +113,7 @@ function App(): React.JSX.Element {
 
   // Define la función para ejecutar en segundo plano
   const sendTCPInBackground = useCallback(async () => {
-    
-    console.log('Aun estoy en segundo plano :p');
-    try {
-      const client = TcpSocket.connect(
-        {
-          port: Number(port),
-          host: ip
-        },
-        () => {
-          console.log('Conexión establecida correctamente');
-        }
-      );
-      console.log('Se inicializó el cliente:', client);
-    } catch {
-      console.log('no se pudo crear el socket')
-    }
-
-    const sendDataTCP = async () => {
-      try {
-        const locationData = await obtenerUbicacion(); // Espera los datos de ubicación actualizados
-
-        // Obtiene la fecha y hora actual
-        const currentDate = new Date();
-        const currentHours = currentDate.getHours();
-        const currentMinutes = currentDate.getMinutes();
-        const currentSeconds = currentDate.getSeconds();
-
-        // Formatea la hora actual en formato de 24 horas
-        const currentHour24 = `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}:${String(currentSeconds).padStart(2, '0')}`;
-
-        // Construye el mensaje con la ubicación y la hora formateada
-        const message = `${locationData.latitude} ${locationData.longitude} ${new Date(locationData.timestamp).toLocaleDateString()} ${currentHour24} ${id}`;
-
-        const locationDataJSON = JSON.stringify(message);
-        client.write(locationDataJSON); // Escribir los datos en el cliente TCP
-        console.log('Datos enviados:', locationDataJSON); // Registro de envío de datos
-      } catch (error) {
-        console.error('Error al enviar datos por TCP:', error);
-      }
-    };
-
+        
     while (true) {
       if (sendingDataRef.current) {
         console.log('hola mundo')
@@ -172,7 +121,6 @@ function App(): React.JSX.Element {
       await sleep(1000);
     }
   }, []);
-
 
 
   // Inicia sendTCPInBackground cuando sea necesario
@@ -231,8 +179,6 @@ function App(): React.JSX.Element {
       handlePressSendTCP={handlePressSendTCP}
       sendingData={sendingData}
       locationData={locationData}
-      ip={ip}
-      setIp={setIp}
       id={id}
       setId={setId}
     />

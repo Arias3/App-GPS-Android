@@ -22,8 +22,6 @@ interface MainScreenContentProps {
     handlePressSendTCP: () => void;
     sendingData: boolean;
     locationData: LocationData;
-    ip: string;
-    setIp: (ip: string) => void;
     id: string;
     setId: (id: string) => void;
 }
@@ -38,8 +36,6 @@ const MainScreenContent: React.FC<MainScreenContentProps> = ({
     handlePressSendTCP,
     sendingData,
     locationData,
-    ip,
-    setIp,
     id,
     setId
 }) => {
@@ -69,13 +65,6 @@ const MainScreenContent: React.FC<MainScreenContentProps> = ({
                             placeholderTextColor='color: rgb(8,27,42)'
                         />
 
-                        <TextInput
-                            style={[styles.input, { color: 'rgb(8,27,42)' }]}
-                            placeholder="IP publica"
-                            onChangeText={setIp}
-                            value={ip}
-                            placeholderTextColor='color: rgb(8,27,42)'
-                        />
                         <View style={style3.buttonContainer}>
                             <Button
                                 onPress={handlePressStart}
