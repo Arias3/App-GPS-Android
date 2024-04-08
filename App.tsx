@@ -4,7 +4,7 @@ import {
   AppState,
   useColorScheme
 } from 'react-native';
-import BackgroundService from 'react-native-background-actions';
+
 import dgram from 'react-native-udp';
 import MainScreenContent from './MainScreensContent';
 import { style3 } from './style1';
@@ -108,60 +108,66 @@ function App(): React.JSX.Element {
 
   const sendUDPData1 = useCallback((message: string) => {
     const socket = dgram.createSocket({ type: 'udp4' });
+    
     socket.on('error', (error) => {
-      console.error('Error en el socket UDP:', error);
-      socket.close(); // Cierra el socket en caso de error
+        console.error('Error en el socket UDP:', error);
+        socket.close(); // Cierra el socket en caso de error
     });
 
     socket.bind(5000, () => {
-      socket.send(message, 0, message.length, 5000, ip1, function (err) {
-        if (err) {
-          console.error('Error al enviar datos por UDP:', err);
-        } else {
-          console.log('Enviado a 1');
-        }
-        socket.close(); // Cierra el socket después de enviar el mensaje
-      });
+        socket.send(message, 0, message.length, 5000, ip1, function (err) {
+            if (err) {
+                console.error('Error al enviar datos por UDP:', err);
+                // Aquí puedes manejar el error como consideres necesario
+            } else {
+                console.log('Enviado a 1');
+            }
+            socket.close(); // Cierra el socket después de enviar el mensaje
+        });
     });
-  }, [ip1, ip2, ip3]);
+}, [ip1]);
 
-  const sendUDPData2 = useCallback((message: string) => {
-    const socket = dgram.createSocket({ type: 'udp4' });
-    socket.on('error', (error) => {
+const sendUDPData2 = useCallback((message: string) => {
+  const socket = dgram.createSocket({ type: 'udp4' });
+  
+  socket.on('error', (error) => {
       console.error('Error en el socket UDP:', error);
       socket.close(); // Cierra el socket en caso de error
-    });
+  });
 
-    socket.bind(5000, () => {
+  socket.bind(5000, () => {
       socket.send(message, 0, message.length, 5000, ip2, function (err) {
-        if (err) {
-          console.error('Error al enviar datos por UDP:', err);
-        } else {
-          console.log('Enviado a 2');
-        }
-        socket.close(); // Cierra el socket después de enviar el mensaje
+          if (err) {
+              console.error('Error al enviar datos por UDP:', err);
+              // Aquí puedes manejar el error como consideres necesario
+          } else {
+              console.log('Enviado a 2');
+          }
+          socket.close(); // Cierra el socket después de enviar el mensaje
       });
-    });
-  }, [ip1, ip2, ip3]);
+  });
+}, [ip2]);
 
-  const sendUDPData3 = useCallback((message: string) => {
-    const socket = dgram.createSocket({ type: 'udp4' });
-    socket.on('error', (error) => {
+const sendUDPData3 = useCallback((message: string) => {
+  const socket = dgram.createSocket({ type: 'udp4' });
+  
+  socket.on('error', (error) => {
       console.error('Error en el socket UDP:', error);
       socket.close(); // Cierra el socket en caso de error
-    });
+  });
 
-    socket.bind(5000, () => {
+  socket.bind(5000, () => {
       socket.send(message, 0, message.length, 5000, ip3, function (err) {
-        if (err) {
-          console.error('Error al enviar datos por UDP:', err);
-        } else {
-          console.log('Enviado a 3');
-        }
-        socket.close(); // Cierra el socket después de enviar el mensaje
+          if (err) {
+              console.error('Error al enviar datos por UDP:', err);
+              // Aquí puedes manejar el error como consideres necesario
+          } else {
+              console.log('Enviado a 3');
+          }
+          socket.close(); // Cierra el socket después de enviar el mensaje
       });
-    });
-  }, [ip1, ip2, ip3]);
+  });
+}, [ip3]);
 
   // Define la función para ejecutar en segundo plano
   const sendUDPInBackground = useCallback(async () => {
@@ -188,24 +194,21 @@ function App(): React.JSX.Element {
         throw error; // Relanza el error para que sea manejado externamente si es necesario
       }
     };
-    console.log('Aun estoy en segundo plano :p');
     while (sendingDataRef.current) {
       try {
         const message = await mensaje();
         sendUDPData1(message);
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 2000));
         sendUDPData2(message);
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 2000));
         sendUDPData3(message);
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 2000));
         console.log(message);
       } catch (error) {
         console.error('Error al enviar datos por UDP:', error);
       }
-      // Esperar 5 segundos antes de enviar el próximo dato
-      await new Promise(resolve => setTimeout(resolve, 5000));
     }
-  }, [sendUDPData1, sendingDataRef, id]);
+  }, [sendUDPData1, sendingDataRef, id, ip1, ip2, ip3]);
 
   // Actualiza la referencia cuando cambia el estado sendingData
   useEffect(() => {
@@ -219,38 +222,16 @@ function App(): React.JSX.Element {
     }
   }, [sendUDPInBackground, sendingData]);
 
-  // Registra la tarea en segundo plano
-  const options = {
-    taskName: 'Envío de datos UDP',
-    taskTitle: 'Enviando datos por UDP',
-    taskDesc: 'Enviando datos de ubicación por UDP',
-    taskIcon: {
-      name: 'ic_launcher',
-      type: 'mipmap',
-    },
-    color: '#ff00ff',
-  };
 
   const handlePressStart = () => {
     setCurrentScreen(Screen.LOCATION_INFO);
     obtenerUbicacion();
-    try {
-      BackgroundService.start(sendUDPInBackground, options);
-      console.log('Tarea en segundo plano iniciada correctamente');
-    } catch (error) {
-      console.error('Error al iniciar la tarea en segundo plano:', error);
-    }
   };
 
   const handlePressBack = () => {
     setCurrentScreen(Screen.HOME);
-    try {
-      BackgroundService.stop();
-      console.log('Tarea en segundo plano detenida correctamente');
-    } catch (error) {
-      console.error('Error al detener la tarea en segundo plano:', error);
-    }
-    if (sendingData) {
+
+        if (sendingData) {
       // Cambiar el estado de sendingData
       setSendingData(prevState => !prevState);
       console.log('cancele el envio pq me salí a Home')
